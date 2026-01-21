@@ -18,11 +18,15 @@ const statusColors = {
 };
 
 export const BookingCard = ({ booking, onCancel, isLoading }: BookingCardProps) => {
+  // Ensure booking.id is converted to string
+  const bookingId = String(booking.id);
+  const displayId = bookingId.length > 8 ? bookingId.slice(0, 8) : bookingId;
+  
   return (
     <Card className="border-border/50">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
         <div>
-          <CardTitle className="text-lg">Booking #{booking.id.slice(0, 8)}</CardTitle>
+          <CardTitle className="text-lg">Booking #{displayId}</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Created {format(new Date(booking.created_at), 'MMM d, yyyy')}
           </p>
@@ -57,7 +61,7 @@ export const BookingCard = ({ booking, onCancel, isLoading }: BookingCardProps) 
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => onCancel(booking.id)}
+              onClick={() => onCancel(bookingId)}
               disabled={isLoading}
             >
               Cancel Booking

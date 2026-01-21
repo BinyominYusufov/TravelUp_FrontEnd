@@ -1,64 +1,70 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Compass, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const BG_IMAGE =
+  'https://images.unsplash.com/photo-1619467416348-6a782839e95f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=80';
+
 export const HeroSection = () => {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = BG_IMAGE;
+    img.onload = () => setLoaded(true);
+  }, []);
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden gradient-hero">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-      </div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      
+      {/* Background image */}
+      <div
+        className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
+          loaded ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{ backgroundImage: `url(${BG_IMAGE})` }}
+      />
 
-      <div className="container mx-auto px-4 py-20 relative z-10">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Logo Icon */}
-          <div className="flex justify-center">
-            <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shadow-2xl">
-              <Compass className="w-12 h-12 text-white" />
-            </div>
-          </div>
+      {/* Purple overlay (как на макете) */}
+      <div className="absolute inset-0 bg-purple-600/60" />
 
-          {/* Title */}
-          <h1 className="text-5xl md:text-7xl font-bold text-white text-balance leading-tight">
-            Explore the World<br />
-            <span className="opacity-90">Your Way</span>
-          </h1>
+      {/* Content */}
+      <div className="relative z-10 max-w-4xl text-center px-4 space-y-6">
+        
+        <h1 className="text-5xl md:text-7xl font-extrabold text-white">
+          Explore the World
+        </h1>
 
-          {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto text-balance">
-            Discover breathtaking destinations, plan unforgettable trips, and book premium experiences with TravelX.
-          </p>
+        <h2 className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-400 to-pink-400 bg-clip-text text-transparent">
+          Your Way
+        </h2>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button
-              size="lg"
-              className="bg-white text-primary hover:bg-white/90 shadow-lg px-8 py-6 text-lg font-semibold"
-              asChild
-            >
-              <Link to="/destinations">
-                Explore Destinations
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg font-semibold bg-transparent"
-              asChild
-            >
-              <Link to="/register">Plan a Trip</Link>
-            </Button>
-          </div>
+        <p className="text-white/90 max-w-2xl mx-auto text-lg md:text-xl">
+          Discover breathtaking destinations, plan unforgettable trips,
+          and book premium experiences with TravelX.
+        </p>
 
-          {/* Scroll Indicator */}
-          <div className="pt-16 flex justify-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-white/60" />
-            <div className="w-2 h-2 rounded-full bg-white/40" />
-            <div className="w-2 h-2 rounded-full bg-white/40" />
-          </div>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+          <Button
+            size="lg"
+            className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-6 text-lg"
+            asChild
+          >
+            <Link to="/destinations">
+              Explore Destinations
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+
+          <Button
+            size="lg"
+            variant="outline"
+            className="border-white/40 text-white hover:bg-white/10 px-8 py-6 text-lg"
+            asChild
+          >
+            <Link to="/register" className='text-[#3f3f3f]'>Plan a Trip</Link>
+          </Button>
         </div>
       </div>
     </section>

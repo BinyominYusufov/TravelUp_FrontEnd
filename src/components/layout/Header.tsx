@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Menu, X, User, LogOut } from 'lucide-react';
+import { Compass, Menu, X, User, LogOut, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { authApi } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +21,30 @@ const navLinks = [
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, refreshUser } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const toggleTheme = async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    
+    // If user is authenticated, save theme preference to profile
+    if (isAuthenticated && user) {
+      try {
+        await authApi.updateProfile({ theme: newTheme });
+        await refreshUser();
+      } catch (error) {
+        // Silently fail - theme is still updated in UI
+        console.error('Failed to update theme in profile:', error);
+      }
+    }
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -53,6 +77,23 @@ export const Header = () => {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Theme Toggle */}
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -116,6 +157,28 @@ export const Header = () => {
                   {link.label}
                 </Link>
               ))}
+              {/* Mobile Theme Toggle */}
+              {mounted && (
+                <button
+                  onClick={() => {
+                    toggleTheme();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:bg-muted flex items-center gap-2"
+                >
+                  {theme === 'dark' ? (
+                    <>
+                      <Sun className="w-4 h-4" />
+                      Light Mode
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-4 h-4" />
+                      Dark Mode
+                    </>
+                  )}
+                </button>
+              )}
               {!isAuthenticated && (
                 <div className="flex flex-col gap-2 mt-4 px-4">
                   <Button variant="outline" asChild>

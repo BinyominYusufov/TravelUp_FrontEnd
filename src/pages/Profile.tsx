@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { User, Settings, Moon, Sun, Loader2 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,26 +10,42 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { useThemeSync } from '@/hooks/useThemeSync';
 
 const Profile = () => {
   const { user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { theme: syncedTheme } = useThemeSync();
   const [isSaving, setIsSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
-  const handleThemeToggle = async () => {
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleThemeToggle = async (checked: boolean) => {
     if (!user) return;
     
     setIsSaving(true);
-    const newTheme = user.theme === 'dark' ? 'light' : 'dark';
+    const newTheme = checked ? 'dark' : 'light';
     
     try {
+      // Update theme in next-themes first (immediate UI update)
+      setTheme(newTheme);
+      
+      // Then update in backend
       await authApi.updateProfile({ theme: newTheme });
       await refreshUser();
+      
       toast({
         title: 'Theme updated',
         description: `Theme changed to ${newTheme} mode.`,
       });
     } catch (error) {
+      // Revert on error
+      setTheme(user.theme === 'dark' ? 'dark' : 'light');
       toast({
         title: 'Error',
         description: 'Failed to update theme. Please try again.',
@@ -38,6 +55,9 @@ const Profile = () => {
       setIsSaving(false);
     }
   };
+
+  // Determine if dark mode is active
+  const isDark = mounted && (theme === 'dark' || (user?.theme === 'dark' && theme === 'system'));
 
   if (authLoading) {
     return (
@@ -116,7 +136,7 @@ const Profile = () => {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {user?.theme === 'dark' ? (
+                  {isDark ? (
                     <Moon className="w-5 h-5 text-primary" />
                   ) : (
                     <Sun className="w-5 h-5 text-primary" />
@@ -130,9 +150,9 @@ const Profile = () => {
                 </div>
                 <Switch
                   id="theme-toggle"
-                  checked={user?.theme === 'dark'}
+                  checked={isDark}
                   onCheckedChange={handleThemeToggle}
-                  disabled={isSaving}
+                  disabled={isSaving || !mounted}
                 />
               </div>
             </CardContent>
