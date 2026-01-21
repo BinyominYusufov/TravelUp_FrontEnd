@@ -12,6 +12,7 @@ import { useDestinationById } from '@/hooks/useDestinationById';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { ReviewsSection } from '@/components/reviews/ReviewsSection';
 
 const DestinationDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -217,6 +218,9 @@ const DestinationDetail = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Reviews Section */}
+            <ReviewsSection destinationId={destination.id} />
           </div>
 
           {/* Booking Card */}

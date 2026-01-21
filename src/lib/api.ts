@@ -132,6 +132,11 @@ const apiFetch = async <T>(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
     
+    // Handle 403 Forbidden specifically
+    if (response.status === 403) {
+      throw new Error(error.detail || error.message || 'Forbidden: You do not have permission to perform this action.');
+    }
+    
     // Handle validation errors (FastAPI format)
     if (Array.isArray(error.detail)) {
       const validationMessages = error.detail
