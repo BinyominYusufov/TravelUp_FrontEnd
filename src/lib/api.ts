@@ -69,16 +69,16 @@ export interface ReviewCreate {
 
 export interface Payment {
   id: string;
-  booking_id: string;
+  booking_id: number;
   amount: number;
   currency: string;
   provider: string;
-  status: string;
+  status: 'pending' | 'paid' | 'failed';
   created_at: string;
 }
 
 export interface PaymentCreate {
-  booking_id: string;
+  booking_id: number;
   amount: number;
   currency?: string;
   provider: string;
@@ -131,7 +131,17 @@ const apiFetch = async <T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-    throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    
+    // Handle validation errors (FastAPI format)
+    if (Array.isArray(error.detail)) {
+      const validationMessages = error.detail
+        .map((err: { msg?: string; [key: string]: unknown }) => err.msg || JSON.stringify(err))
+        .join(', ');
+      throw new Error(validationMessages || `Validation error: ${response.status}`);
+    }
+    
+    // Handle single error message
+    throw new Error(error.detail || error.message || `HTTP error! status: ${response.status}`);
   }
 
   if (response.status === 204) {

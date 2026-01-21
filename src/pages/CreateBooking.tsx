@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Calendar, Users, Minus, Plus, Check, Shield, Clock, Tag } from 'lucide-react';
+import { Loader2, ArrowLeft, Calendar, Users, Minus, Plus, Check, Shield, Clock, Tag, CreditCard } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDestinationById } from '@/hooks/useDestinationById';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingsApi } from '@/lib/api';
+import { bookingsApi, paymentsApi, type Booking, type Payment } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 const CreateBooking = () => {
@@ -20,6 +20,10 @@ const CreateBooking = () => {
   const navigate = useNavigate();
 
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
+  const [createdPayment, setCreatedPayment] = useState<Payment | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState({
     travel_date: '',
     travelers_count: 2,
@@ -75,7 +79,7 @@ const CreateBooking = () => {
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 5); // Default 5-day trip
 
-      await bookingsApi.create({
+      const booking = await bookingsApi.create({
         destination_id: id,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0],
@@ -83,12 +87,15 @@ const CreateBooking = () => {
         total_price: total,
       });
 
+      setCreatedBooking(booking);
+      setCreatedPayment(null);
+      setErrorMessage(null);
+      setPaymentError(null);
+
       toast({
         title: 'Booking confirmed!',
-        description: 'Your booking has been created successfully.',
+        description: 'Your booking has been created successfully. You can now proceed to payment.',
       });
-
-      navigate('/bookings');
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Failed to create booking. Please try again.'
@@ -100,6 +107,48 @@ const CreateBooking = () => {
       });
     } finally {
       setIsCreatingBooking(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!createdBooking) {
+      return;
+    }
+
+    setPaymentError(null);
+    setIsProcessingPayment(true);
+
+    try {
+      // Convert booking_id from string to number as required by backend
+      const bookingIdNumber = parseInt(createdBooking.id, 10);
+      
+      if (isNaN(bookingIdNumber)) {
+        throw new Error('Invalid booking ID');
+      }
+
+      const payment = await paymentsApi.create({
+        booking_id: bookingIdNumber,
+        amount: createdBooking.total_price,
+        currency: 'USD',
+        provider: 'stripe',
+      });
+
+      setCreatedPayment(payment);
+
+      toast({
+        title: 'Payment request created!',
+        description: `Payment request created successfully. Status: ${payment.status}`,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process payment. Please try again.';
+      setPaymentError(errorMessage);
+      toast({
+        title: 'Payment Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -275,26 +324,123 @@ const CreateBooking = () => {
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleConfirmBooking}
-                  disabled={isCreatingBooking || !bookingData.travel_date}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                >
-                  {isCreatingBooking ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Confirm Booking
-                    </>
-                  )}
-                </Button>
+                {!createdBooking ? (
+                  <>
+                    <Button
+                      onClick={handleConfirmBooking}
+                      disabled={isCreatingBooking || !bookingData.travel_date}
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                    >
+                      {isCreatingBooking ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Confirm Booking
+                        </>
+                      )}
+                    </Button>
 
-                {errorMessage && (
-                  <p className="text-sm text-destructive text-center">{errorMessage}</p>
+                    {errorMessage && (
+                      <p className="text-sm text-destructive text-center">{errorMessage}</p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mb-4">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <Check className="w-5 h-5" />
+                        <span className="font-semibold">Booking Created Successfully!</span>
+                      </div>
+                      <p className="text-sm text-green-600 dark:text-green-500 mt-1">
+                        Your booking ID: {createdBooking.id}
+                      </p>
+                    </div>
+
+                    {createdPayment ? (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
+                            <CreditCard className="w-5 h-5" />
+                            <span className="font-semibold">Payment Request Created</span>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Payment ID:</span>
+                              <span className="font-medium">{createdPayment.id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Amount:</span>
+                              <span className="font-medium">
+                                {createdPayment.currency} {createdPayment.amount}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Provider:</span>
+                              <span className="font-medium capitalize">{createdPayment.provider}</span>
+                            </div>
+                            <div className="flex justify-between pt-2 border-t">
+                              <span className="text-muted-foreground">Status:</span>
+                              <Badge
+                                variant={
+                                  createdPayment.status === 'paid'
+                                    ? 'default'
+                                    : createdPayment.status === 'failed'
+                                    ? 'destructive'
+                                    : 'secondary'
+                                }
+                                className="capitalize"
+                              >
+                                {createdPayment.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={() => navigate('/bookings')}
+                          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                        >
+                          View My Bookings
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={handlePayment}
+                          disabled={isProcessingPayment}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                        >
+                          {isProcessingPayment ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Processing Payment...
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Pay Now
+                            </>
+                          )}
+                        </Button>
+
+                        {paymentError && (
+                          <p className="text-sm text-destructive text-center mt-2">{paymentError}</p>
+                        )}
+
+                        <Button
+                          onClick={() => navigate('/bookings')}
+                          variant="outline"
+                          className="w-full mt-2"
+                        >
+                          Skip Payment (Pay Later)
+                        </Button>
+                      </>
+                    )}
+                  </>
                 )}
 
                 <p className="text-xs text-center text-muted-foreground pt-4 border-t">
